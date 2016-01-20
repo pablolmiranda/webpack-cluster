@@ -53,6 +53,7 @@ Compiler:
   --progress  Displays compilation progress           [boolean] [default: false]
   --json      Saves `stats` object to JSON file       [boolean] [default: false]
   --watch     Runs webpack compiler in `watch` mode   [boolean] [default: false]
+  --memoryFs  Compiles to memory                      [boolean] [default: false]
 
 Webpack:
   --profile  Captures timing information for each module
@@ -77,12 +78,26 @@ Miscellaneous:
 <span class="pl-k">var</span> webpackOptions <span class="pl-k">=</span> {
         output<span class="pl-k">:</span> {
             path<span class="pl-k">:</span> <span class="pl-s"><span class="pl-pds">'</span>./dist<span class="pl-pds">'</span></span>
+        },
+        stats<span class="pl-k">:</span> {
+            colors<span class="pl-k">:</span> <span class="pl-c1">true</span>,
+            hash<span class="pl-k">:</span> <span class="pl-c1">true</span>,
+            timings<span class="pl-k">:</span> <span class="pl-c1">true</span>,
+            chunks<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            chunkModules<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            modules<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            children<span class="pl-k">:</span> <span class="pl-c1">true</span>,
+            version<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            cached<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            cachedAssets<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            reasons<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            source<span class="pl-k">:</span> <span class="pl-c1">false</span>,
+            errorDetails<span class="pl-k">:</span> <span class="pl-c1">false</span>
         }
     },
     compilerOptions <span class="pl-k">=</span> {
         progress<span class="pl-k">:</span> <span class="pl-c1">false</span>,
         json<span class="pl-k">:</span> <span class="pl-c1">false</span>,
-        stats<span class="pl-k">:</span> <span class="pl-c1">false</span>,
         memoryFs<span class="pl-k">:</span> <span class="pl-c1">false</span>
     };
 
