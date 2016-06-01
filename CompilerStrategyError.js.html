@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: CompilerStrategyError.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: CompilerStrategyError.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import {
+    isObject,
+    isError
+} from 'lodash';
+
+/**
+ * @private
+ * @type {String[]}
+ */
+const SYSTEM_PROPERTIES = ['message', 'fileName', 'lineNumber', 'stack'];
+
+/**
+ * @private
+ * @type {String}
+ */
+const WRAPPER_KEY = '$CompilerStrategyError$';
+
+/**
+ * @class
+ * @extends {Error}
+ */
+class CompilerStrategyError extends Error {
+    /**
+     * @constructor
+     * @param {String} message
+     * @param {String} [fileName]
+     * @param {Number} [lineNumber]
+     */
+    constructor(message, fileName, lineNumber) {
+        super(message, fileName, lineNumber);
+    }
+
+    /**
+     * @returns {Object}
+     */
+    toJSON() {
+        let obj = {};
+
+        SYSTEM_PROPERTIES.forEach(key => {
+            if (this[key]) {
+                obj[key] = this[key];
+            }
+        });
+
+        Object.keys(this).forEach(key => {
+            obj[key] = this[key];
+        });
+
+        return obj;
+    }
+
+    /**
+     * @param {Object} obj
+     * @returns {Error}
+     */
+    static fromJSON(obj) {
+        if (isError(obj)) {
+            return obj;
+        } else {
+            let err,
+                message = obj.message;
+
+            switch (obj.type) {
+                case 'TypeError':
+                    err = new TypeError(message);
+                    break;
+
+                case 'RangeError':
+                    err = new RangeError(message);
+                    break;
+
+                case 'EvalError':
+                    err = new EvalError(message);
+                    break;
+
+                case 'ReferenceError':
+                    err = new ReferenceError(message);
+                    break;
+
+                case 'SyntaxError':
+                    err = new SyntaxError(message);
+                    break;
+
+                case 'URIError':
+                    err = new URIError(message);
+                    break;
+
+                default:
+                    err = new Error(message);
+            }
+
+            SYSTEM_PROPERTIES.forEach(key => {
+                if (obj[key]) {
+                    err[key] = obj[key];
+                }
+            });
+
+            Object.keys(obj).forEach(key => {
+                if (!err[key]) {
+                    err[key] = obj[key];
+                }
+            });
+
+            delete err[WRAPPER_KEY];
+
+            return err;
+        }
+    }
+
+    /**
+     * @param {Error} err
+     * @returns {CompilerStrategyError}
+     */
+    static fromError(err) {
+        const wrapper = new CompilerStrategyError(err.message, err.fileName, err.lineNumber);
+
+        wrapper.type = err.constructor.name;
+        wrapper.stack = err.stack;
+        wrapper[WRAPPER_KEY] = true;
+
+        return wrapper;
+    }
+
+    /**
+     * @param {Object} obj
+     * @returns {Boolean}
+     */
+    static isError(obj) {
+        return isObject(obj) &amp;&amp; obj[WRAPPER_KEY] === true;
+    }
+}
+
+export default CompilerStrategyError;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-webpack-glob.html">webpack-glob</a></li></ul><h3>Classes</h3><ul><li><a href="ClusterCompilerStrategy.html">ClusterCompilerStrategy</a></li><li><a href="ClusterForkRunStrategy.html">ClusterForkRunStrategy</a></li><li><a href="ClusterForkWatchStrategy.html">ClusterForkWatchStrategy</a></li><li><a href="ClusterRunStrategy.html">ClusterRunStrategy</a></li><li><a href="ClusterWatchStrategy.html">ClusterWatchStrategy</a></li><li><a href="CompilerAdapter.html">CompilerAdapter</a></li><li><a href="CompilerFactory.html">CompilerFactory</a></li><li><a href="CompilerStrategy.html">CompilerStrategy</a></li><li><a href="CompilerStrategyError.html">CompilerStrategyError</a></li><li><a href="CompilerStrategyEventsFactory.html">CompilerStrategyEventsFactory</a></li><li><a href="CompilerStrategyInvoker.html">CompilerStrategyInvoker</a></li><li><a href="CompilerStrategyProgress.html">CompilerStrategyProgress</a></li><li><a href="CompilerStrategyResult.html">CompilerStrategyResult</a></li><li><a href="CompilerStrategyStats.html">CompilerStrategyStats</a></li><li><a href="ConfigBuilder.html">ConfigBuilder</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Jun 01 2016 07:22:35 GMT+0000 (UTC)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

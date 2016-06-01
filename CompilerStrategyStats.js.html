@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: CompilerStrategyStats.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: CompilerStrategyStats.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import {
+    result,
+    get,
+    isPlainObject,
+    isObject,
+    isString,
+    isFunction,
+    isError
+} from 'lodash';
+import CompilerStrategyError from './CompilerStrategyError';
+import STATS_OPTIONS from './StatsOptions';
+
+/**
+ * @private
+ * @type {WeakMap}
+ */
+const FILENAME = new WeakMap();
+
+/**
+ * @private
+ * @type {WeakMap}
+ */
+const RAW = new WeakMap();
+
+/**
+ * @private
+ * @type {WeakMap}
+ */
+const FATAL_ERROR = new WeakMap();
+
+/**
+ * @class
+ */
+class CompilerStrategyStats {
+    /**
+     * @constructor
+     * @param {String} filename
+     * @param {Object} raw
+     * @param {Error} fatalError
+     */
+    constructor(filename, raw, fatalError) {
+        FILENAME.set(this, filename);
+        RAW.set(this, raw);
+        FATAL_ERROR.set(this, fatalError);
+    }
+
+    /**
+     * @type {String}
+     */
+    get filename() {
+        return FILENAME.get(this);
+    }
+
+    /**
+     * @type {Object}
+     */
+    get raw() {
+        return RAW.get(this);
+    }
+
+    /**
+     * @type {Error}
+     */
+    get fatalError() {
+        return FATAL_ERROR.get(this);
+    }
+
+    /**
+     * @type {Boolean}
+     */
+    get hasFatalError() {
+        return isError(this.fatalError);
+    }
+
+    /**
+     * @type {Boolean}
+     */
+    get hasErrors() {
+        return result(this.raw, 'hasErrors', false);
+    }
+
+    /**
+     * @type {Boolean}
+     */
+    get hasWarnings() {
+        return result(this.raw, 'hasWarnings', false);
+    }
+
+    /**
+     * @override
+     * @param {Object} [options]s
+     * @returns {String}
+     */
+    toString(options) {
+        if (!isPlainObject(options)) {
+            options = get(this.raw, 'compilation.options.stats', STATS_OPTIONS);
+        }
+
+        let toString;
+
+        if (isObject(this.raw)) {
+            if (isFunction(this.raw.toString)) {
+                toString = this.raw.toString(options);
+            } else if (isString(this.raw.toString)) {
+                toString = this.raw.toString;
+            }
+        }
+
+        if (!isString(toString)) {
+            toString = '';
+        }
+
+        return toString;
+    }
+
+    /**
+     * @returns {Object}
+     */
+    toJSON() {
+        return {
+            filename: this.filename,
+            fatalError: this.fatalError,
+            stats: {
+                hasErrors: this.hasErrors,
+                hasWarnings: this.hasWarnings,
+                toString: this.toString()
+            }
+        };
+    }
+
+    /**
+     * @param {Object} obj
+     * @returns {CompilerStrategyStats}
+     */
+    static fromJSON(obj) {
+        if (obj instanceof CompilerStrategyStats) {
+            return obj;
+        } else {
+            const filename = get(obj, 'filename'),
+                stats = get(obj, 'stats');
+
+            let fatalError = get(obj, 'fatalError');
+
+            if (CompilerStrategyError.isError(fatalError)) {
+                fatalError = CompilerStrategyError.fromJSON(fatalError);
+            }
+
+            return new CompilerStrategyStats(filename, stats, fatalError);
+        }
+    }
+}
+
+export default CompilerStrategyStats;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-webpack-glob.html">webpack-glob</a></li></ul><h3>Classes</h3><ul><li><a href="ClusterCompilerStrategy.html">ClusterCompilerStrategy</a></li><li><a href="ClusterForkRunStrategy.html">ClusterForkRunStrategy</a></li><li><a href="ClusterForkWatchStrategy.html">ClusterForkWatchStrategy</a></li><li><a href="ClusterRunStrategy.html">ClusterRunStrategy</a></li><li><a href="ClusterWatchStrategy.html">ClusterWatchStrategy</a></li><li><a href="CompilerAdapter.html">CompilerAdapter</a></li><li><a href="CompilerFactory.html">CompilerFactory</a></li><li><a href="CompilerStrategy.html">CompilerStrategy</a></li><li><a href="CompilerStrategyError.html">CompilerStrategyError</a></li><li><a href="CompilerStrategyEventsFactory.html">CompilerStrategyEventsFactory</a></li><li><a href="CompilerStrategyInvoker.html">CompilerStrategyInvoker</a></li><li><a href="CompilerStrategyProgress.html">CompilerStrategyProgress</a></li><li><a href="CompilerStrategyResult.html">CompilerStrategyResult</a></li><li><a href="CompilerStrategyStats.html">CompilerStrategyStats</a></li><li><a href="ConfigBuilder.html">ConfigBuilder</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Jun 01 2016 07:22:35 GMT+0000 (UTC)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

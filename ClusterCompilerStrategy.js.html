@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ClusterCompilerStrategy.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ClusterCompilerStrategy.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import {
+    get
+} from 'lodash';
+import {
+    cpus
+} from 'os';
+import throat from 'throat';
+import cluster from 'cluster';
+import CompilerStrategy from './CompilerStrategy';
+
+/**
+ * @private
+ * @type {Number}
+ */
+const DEFAULT_MAX_WORKERS = cpus().length;
+
+/**
+ * @private
+ * @type {WeakMap}
+ */
+const WORKERS = new WeakMap();
+
+/**
+ * @class
+ * @extends {CompilerStrategy}
+ */
+class ClusterCompilerStrategy extends CompilerStrategy {
+    /**
+     * @constructor
+     * @param {CompilerOptions} [compilerOptions={}]
+     * @param {WebpackOptions} [webpackOptions={}]
+     */
+    constructor(compilerOptions = {}, webpackOptions = {}) {
+        super(compilerOptions, webpackOptions);
+
+        this.maxWorkers = get(compilerOptions, 'maxWorkers', DEFAULT_MAX_WORKERS);
+        this.isConnected = false;
+        this.failOnOptions = get(compilerOptions, 'failOn', {});
+
+        WORKERS.set(this, new Map());
+
+        process.on('SIGINT', () => this.afterExecute());
+    }
+
+    /**
+     * @abstract
+     * @type {String}
+     */
+    get workerPath() {}
+
+    /**
+     * @protected
+     * @returns {Map&lt;String,Worker>}
+     */
+    get workers() {
+        return WORKERS.get(this);
+    }
+
+    /**
+     * @protected
+     * @returns {Promise}
+     */
+    beforeExecute() {
+        return new Promise(resolve => {
+            if (!this.isConnected) {
+                cluster.setupMaster({
+                    exec: this.workerPath
+                });
+
+                this.isConnected = true;
+            }
+
+            resolve();
+        });
+    }
+
+    /**
+     * @protected
+     * @returns {Promise}
+     */
+    afterExecute() {
+        return new Promise(resolve => {
+            if (this.isConnected) {
+                cluster.disconnect(resolve);
+
+                this.isConnected = false;
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    /**
+     * @protected
+     * @param {String} filename
+     * @returns {Promise&lt;Worker>}
+     */
+    createFork(filename) {
+        return new Promise(resolve => {
+            if (!this.workers.has(filename)) {
+                const worker = cluster.fork();
+
+                worker.once('online', () => {
+                    this.workers.set(filename, worker);
+
+                    resolve(worker);
+                });
+            } else {
+                resolve(this.workers.get(filename));
+            }
+        });
+    }
+
+    /**
+     * @protected
+     * @param {String} filename
+     * @returns {Promise}
+     */
+    closeFork(filename) {
+        return new Promise(resolve => {
+            if (this.workers.has(filename) &amp;&amp; this.isConnected) {
+                const worker = this.workers.get(filename);
+
+                worker.once('disconnect', () => {
+                    this.workers.delete(filename);
+
+                    resolve();
+                });
+
+                worker.kill();
+            } else {
+                resolve();
+            }
+        });
+    }
+
+    /**
+     * @protected
+     * @param {Array} array
+     * @param {Function} callback
+     * @returns {Promise}
+     */
+    throttle(array, callback) {
+        return Promise.all(array.map(throat(this.maxWorkers, callback)));
+    }
+}
+
+export default ClusterCompilerStrategy;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-webpack-glob.html">webpack-glob</a></li></ul><h3>Classes</h3><ul><li><a href="ClusterCompilerStrategy.html">ClusterCompilerStrategy</a></li><li><a href="ClusterForkRunStrategy.html">ClusterForkRunStrategy</a></li><li><a href="ClusterForkWatchStrategy.html">ClusterForkWatchStrategy</a></li><li><a href="ClusterRunStrategy.html">ClusterRunStrategy</a></li><li><a href="ClusterWatchStrategy.html">ClusterWatchStrategy</a></li><li><a href="CompilerAdapter.html">CompilerAdapter</a></li><li><a href="CompilerFactory.html">CompilerFactory</a></li><li><a href="CompilerStrategy.html">CompilerStrategy</a></li><li><a href="CompilerStrategyError.html">CompilerStrategyError</a></li><li><a href="CompilerStrategyEventsFactory.html">CompilerStrategyEventsFactory</a></li><li><a href="CompilerStrategyInvoker.html">CompilerStrategyInvoker</a></li><li><a href="CompilerStrategyProgress.html">CompilerStrategyProgress</a></li><li><a href="CompilerStrategyResult.html">CompilerStrategyResult</a></li><li><a href="CompilerStrategyStats.html">CompilerStrategyStats</a></li><li><a href="ConfigBuilder.html">ConfigBuilder</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Jun 01 2016 07:22:35 GMT+0000 (UTC)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

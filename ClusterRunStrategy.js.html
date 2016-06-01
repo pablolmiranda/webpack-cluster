@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: ClusterRunStrategy.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: ClusterRunStrategy.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import {
+    get
+} from 'lodash';
+import {
+    ConfigFinder
+} from 'webpack-config';
+import ConfigBuilder from './ConfigBuilder';
+import ClusterCompilerStrategy from './ClusterCompilerStrategy';
+import CompilerStrategyProgress from './CompilerStrategyProgress';
+import CompilerStrategyStats from './CompilerStrategyStats';
+import CompilerStrategyResult from './CompilerStrategyResult';
+import STRATEGY_EVENTS from './CompilerStrategyEvents';
+import FORK_EVENTS from './ClusterForkEvents';
+
+/**
+ * @private
+ * @type {String}
+ */
+const WORKER_PATH = require.resolve('./ClusterRunWorker');
+
+/**
+ * @class
+ * @extends {ClusterCompilerStrategy}
+ */
+class ClusterRunStrategy extends ClusterCompilerStrategy {
+    /**
+     * @override
+     */
+    get workerPath() {
+        return WORKER_PATH;
+    }
+
+    /**
+     * @protected
+     * @param {String} pattern
+     * @returns {Object}
+     */
+    webpackOptionsFor(pattern) {
+        return new ConfigBuilder()
+            .reset()
+            .merge(this.webpackOptions)
+            .pattern(pattern)
+            .build();
+    }
+
+    /**
+     * @protected
+     * @param {String} pattern
+     * @returns {Promise&lt;CompilerStrategyResult>}
+     */
+    find(pattern) {
+        const files = ConfigFinder.INSTANCE.findConfigs(pattern);
+
+        return Promise.resolve(new CompilerStrategyResult(pattern, files));
+    }
+
+    /**
+     * @protected
+     * @param {...String} patterns
+     * @returns {Promise&lt;CompilerStrategyResult[]>}
+     */
+    findAll(...patterns) {
+        return Promise.all(patterns.map(pattern => this.find(pattern))).then(results => {
+            this.emit(STRATEGY_EVENTS.find, results);
+
+            return Promise.resolve(results);
+        });
+    }
+
+    /**
+     * @protected
+     * @param {String} filename
+     * @param {String} pattern
+     * @param {Function} callback
+     * @returns {Promise&lt;CompilerStrategyStats,Error>}
+     */
+    compile(filename, pattern, callback) {
+        this.emit(STRATEGY_EVENTS.compilationStart, filename);
+
+        return this.createFork(filename).then(worker => {
+            return new Promise(resolve => {
+                worker.on(FORK_EVENTS.message, message => {
+                    const data = get(message, 'data', {});
+
+                    switch (message.type) {
+                        case FORK_EVENTS.progress: {
+                            const progress = CompilerStrategyProgress.fromJSON(data);
+
+                            this.emit(STRATEGY_EVENTS.compilationProgress, progress);
+                            break;
+                        }
+
+                        case FORK_EVENTS.stats: {
+                            const stats = CompilerStrategyStats.fromJSON(data);
+
+                            this.emit(STRATEGY_EVENTS.compilationDone, stats);
+
+                            callback(stats.fatalError, stats.raw);
+                            resolve(stats);
+                            break;
+                        }
+                    }
+                });
+
+                worker.send({
+                    type: FORK_EVENTS.compile,
+                    data: {
+                        filename,
+                        compilerOptions: this.compilerOptions,
+                        webpackOptions: this.webpackOptionsFor(pattern)
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * @protected
+     * @param {CompilerStrategyResult[]} results
+     * @param {Function} callback
+     * @returns {Promise&lt;CompilerStrategyResult[]>}
+     */
+    compileAll(results, callback) {
+        return Promise.all(results.map(result => {
+            return this.throttle(result.files, filename => this.compile(filename, result.pattern, callback).then(stats => {
+                result.stats.set(filename, stats);
+
+                return Promise.resolve(stats);
+            }));
+        })).then(() => this.done(results), () => this.done(results));
+    }
+
+    /**
+     * @private
+     * @param {CompilerStrategyResult[]} results
+     * @returns {Promise}
+     */
+    done(results) {
+        results.forEach(result => {
+            result.files.forEach(filename => {
+                const stats = result.stats.get(filename);
+
+                this.emit(STRATEGY_EVENTS.compilationStats, stats);
+            });
+        });
+
+        this.emit(STRATEGY_EVENTS.done, results);
+
+        try {
+            this.emit(STRATEGY_EVENTS.failOn, this.failOnOptions, results);
+
+            return Promise.resolve(results);
+        } catch (err) {
+            return Promise.reject(err);
+        }
+    }
+
+    /**
+     * @override
+     */
+    execute(patterns, callback) {
+        this.emit(STRATEGY_EVENTS.run, patterns);
+
+        return this.beforeExecute().then(() => {
+            return this.findAll(...patterns)
+                .then(results => this.compileAll(results, callback));
+        }).then(results => this.afterExecute().then(() => Promise.resolve(results)))
+            .catch(err => this.afterExecute().then(() => Promise.reject(err)));
+    }
+}
+
+export default ClusterRunStrategy;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-webpack-glob.html">webpack-glob</a></li></ul><h3>Classes</h3><ul><li><a href="ClusterCompilerStrategy.html">ClusterCompilerStrategy</a></li><li><a href="ClusterForkRunStrategy.html">ClusterForkRunStrategy</a></li><li><a href="ClusterForkWatchStrategy.html">ClusterForkWatchStrategy</a></li><li><a href="ClusterRunStrategy.html">ClusterRunStrategy</a></li><li><a href="ClusterWatchStrategy.html">ClusterWatchStrategy</a></li><li><a href="CompilerAdapter.html">CompilerAdapter</a></li><li><a href="CompilerFactory.html">CompilerFactory</a></li><li><a href="CompilerStrategy.html">CompilerStrategy</a></li><li><a href="CompilerStrategyError.html">CompilerStrategyError</a></li><li><a href="CompilerStrategyEventsFactory.html">CompilerStrategyEventsFactory</a></li><li><a href="CompilerStrategyInvoker.html">CompilerStrategyInvoker</a></li><li><a href="CompilerStrategyProgress.html">CompilerStrategyProgress</a></li><li><a href="CompilerStrategyResult.html">CompilerStrategyResult</a></li><li><a href="CompilerStrategyStats.html">CompilerStrategyStats</a></li><li><a href="ConfigBuilder.html">ConfigBuilder</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Jun 01 2016 07:22:35 GMT+0000 (UTC)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
