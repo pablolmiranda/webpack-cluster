@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: ClusterForkWatchStrategy.js</title>
+    <title>JSDoc: Source: CompilerProperties.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: ClusterForkWatchStrategy.js</h1>
+    <h1 class="page-title">Source: CompilerProperties.js</h1>
 
     
 
@@ -26,43 +26,18 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>import {
-    get,
-    isError
-} from 'lodash';
-import ClusterForkRunStrategy from './ClusterForkRunStrategy';
-import WEBPACK_PROPERTIES from './CompilerWebpackProperties';
-
-/**
- * @class
- * @extends {ClusterForkRunStrategy}
+            <pre class="prettyprint source linenums"><code>/**
+ * @type {Object&lt;String,String>}
  */
-class ClusterForkWatchStrategy extends ClusterForkRunStrategy {
-    /**
-     * @override
-     */
-    execute(patterns, callback) {
-        return this.loadConfig(patterns[0]).then(config => {
-            return this.createCompiler(this.compilerOptions, this.webpackOptionsFor(config)).then(compiler => {
-                const watchOptions = get(config, WEBPACK_PROPERTIES.watchOptions) || get(this.compilerOptions, WEBPACK_PROPERTIES.watchOptions) || {};
-
-                return new Promise((resolve, reject) => {
-                    compiler.watch(watchOptions, (err, stats) => {
-                        callback(err, stats);
-
-                        if (isError(err)) {
-                            reject(err);
-                        } else {
-                            resolve(stats);
-                        }
-                    });
-                });
-            });
-        });
-    }
-}
-
-export default ClusterForkWatchStrategy;
+export default {
+    silent: 'silent',
+    maxWorkers: 'maxWorkers',
+    failOn: 'failOn',
+    watch: 'watch',
+    progress: 'progress',
+    json: 'json',
+    memoryFs: 'memoryFs'
+};
 </code></pre>
         </article>
     </section>
